@@ -98,3 +98,7 @@ dotnet test tests/AzureAiCouncil.Tests/AzureAiCouncil.Tests.csproj
 
 - Secrets: do not commit API keys. Prefer user-secrets or environment variables.
 - Streaming: SSE is the v1 transport; SignalR can be added later if desired.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
