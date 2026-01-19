@@ -1,0 +1,18 @@
+CouncilResolution JSON schema (conceptual):
+{
+  "deliberationId": "...",
+  "summary": "...",
+  "recommendation": "...",
+  "pros": ["..."],
+  "cons": ["..."],
+  "scores": {
+    "risk": "low|medium|high|unknown",
+    "cost": "low|medium|high|unknown",
+    "complexity": "low|medium|high|unknown",
+    "confidence": 0.0
+  },
+  "whenThisIsAGoodIdea": ["..."],
+  "whenToAvoid": ["..."],
+  "suggestedNextSteps": ["..."],
+  "mermaidArchitectureSnippet": "string or empty"
+}

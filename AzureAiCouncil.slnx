@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AzureAiCouncil.Agents/AzureAiCouncil.Agents.csproj" />
+    <Project Path="src/AzureAiCouncil.Api/AzureAiCouncil.Api.csproj" />
+    <Project Path="src/AzureAiCouncil.AppHost/AzureAiCouncil.AppHost.csproj" />
+    <Project Path="src/AzureAiCouncil.Core/AzureAiCouncil.Core.csproj" />
+    <Project Path="src/AzureAiCouncil.ServiceDefaults/AzureAiCouncil.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AzureAiCouncil.Tests/AzureAiCouncil.Tests.csproj" />
+  </Folder>
+</Solution>

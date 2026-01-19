@@ -1,0 +1,6 @@
+@AzureAiCouncil.Api_HostAddress = http://localhost:5139
+
+GET {{AzureAiCouncil.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

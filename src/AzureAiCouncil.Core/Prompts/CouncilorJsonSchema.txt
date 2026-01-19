@@ -1,0 +1,15 @@
+CouncilorStatement JSON schema (conceptual):
+{
+  "councilor": "Vision|Risk|Architecture|Security|Finance",
+  "round": 1,
+  "stanceTitle": "...",
+  "answer": "...",
+  "rationale": "...",
+  "risksOrConcerns": ["..."],
+  "costTier": "low|medium|high|unknown",
+  "complexityTier": "low|medium|high|unknown",
+  "confidence": 0.0,
+  "position": { "goNoGo": "go|no_go|mixed", "priority": "low|medium|high" },
+  "notesForCouncil": ["..."],
+  "mermaidHint": "optional"
+}

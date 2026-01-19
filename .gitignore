@@ -1,0 +1,58 @@
+# --------------------------------------
+# .NET / Visual Studio
+# --------------------------------------
+**/bin/
+**/obj/
+**/[Dd]ebug/
+**/[Rr]elease/
+**/TestResults/
+**/*.user
+**/*.suo
+**/*.userosscache
+**/*.sln.docstates
+**/*.cache
+**/*.pdb
+**/*.dll
+**/*.exe
+**/*.nupkg
+**/*.snupkg
+**/*.log
+
+# VS / Rider
+.vs/
+.idea/
+*.sln.iml
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --------------------------------------
+# Aspire / OpenTelemetry
+# --------------------------------------
+**/.aspire/
+**/aspire-manifest.json
+
+# --------------------------------------
+# Node / Vite
+# --------------------------------------
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/.vite/
+**/*.local
+
+# --------------------------------------
+# Env / secrets
+# --------------------------------------
+.env
+.env.*
+!*.example
+
+# Common local overrides (keep committed appsettings*.json, ignore local variants)
+**/appsettings.*.local.json
+**/appsettings.*.secrets.json
+
+# dotnet user-secrets (typically outside repo, but ignore if present)
+secrets.json
