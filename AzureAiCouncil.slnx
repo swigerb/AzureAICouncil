@@ -8,5 +8,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AzureAiCouncil.Tests/AzureAiCouncil.Tests.csproj" />
+    <Project Path="tests/AzureAiCouncil.ApiTests/AzureAiCouncil.ApiTests.csproj" />
   </Folder>
 </Solution>

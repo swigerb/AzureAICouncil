@@ -54,6 +54,30 @@ public sealed class DeliberationEventBusTests
         await Task.CompletedTask;
     }
 
+    [Fact]
+    public async Task Subscribe_replays_recent_events_for_late_subscribers()
+    {
+        var bus = new InMemoryDeliberationEventBus();
+        var deliberationId = "d1";
+
+        bus.Publish(new DeliberationEvent
+        {
+            EventId = 1,
+            DeliberationId = deliberationId,
+            Type = DeliberationEventType.SessionStarted,
+            Timestamp = DateTimeOffset.UtcNow,
+            Data = new { ok = true },
+        });
+
+        await using var sub = bus.Subscribe(deliberationId);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var replayed = await ReadOneAsync(sub.Reader, cts.Token);
+
+        Assert.Equal(DeliberationEventType.SessionStarted, replayed.Type);
+        Assert.Equal(1, replayed.EventId);
+    }
+
     private static async Task<DeliberationEvent> ReadOneAsync(ChannelReader<DeliberationEvent> reader, CancellationToken cancellationToken)
     {
         return await reader.ReadAsync(cancellationToken);

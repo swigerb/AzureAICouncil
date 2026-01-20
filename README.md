@@ -176,6 +176,13 @@ SSE event names:
 dotnet test tests/AzureAiCouncil.Tests/AzureAiCouncil.Tests.csproj
 ```
 
+SPA tests:
+
+```bash
+cd web/azure-ai-council-spa
+npm test
+```
+
 ## Notes
 
 - Secrets: do not commit API keys. Prefer user-secrets or environment variables.

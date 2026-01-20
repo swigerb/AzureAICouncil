@@ -7,7 +7,10 @@ public sealed class InMemoryDeliberationEventBus : IDeliberationEventBus
 {
     private sealed record Subscriber(Guid Id, Channel<DeliberationEvent> Channel);
 
+    private const int MaxHistoryEventsPerDeliberation = 256;
+
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<Guid, Subscriber>> _subscribers = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, ConcurrentQueue<DeliberationEvent>> _history = new(StringComparer.Ordinal);
 
     public DeliberationEventSubscription Subscribe(string deliberationId)
     {
@@ -22,6 +25,15 @@ public sealed class InMemoryDeliberationEventBus : IDeliberationEventBus
 
         var map = _subscribers.GetOrAdd(deliberationId, _ => new ConcurrentDictionary<Guid, Subscriber>());
         map.TryAdd(subscriber.Id, subscriber);
+
+        // Best-effort replay of recent events so late subscribers can catch up.
+        if (_history.TryGetValue(deliberationId, out var history))
+        {
+            foreach (var ev in history.ToArray())
+            {
+                channel.Writer.TryWrite(ev);
+            }
+        }
 
         return new DeliberationEventSubscription(
             deliberationId,
@@ -40,6 +52,13 @@ public sealed class InMemoryDeliberationEventBus : IDeliberationEventBus
 
     public void Publish(DeliberationEvent ev)
     {
+        var history = _history.GetOrAdd(ev.DeliberationId, _ => new ConcurrentQueue<DeliberationEvent>());
+        history.Enqueue(ev);
+
+        while (history.Count > MaxHistoryEventsPerDeliberation && history.TryDequeue(out _))
+        {
+        }
+
         if (!_subscribers.TryGetValue(ev.DeliberationId, out var map))
         {
             return;

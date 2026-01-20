@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-tests:
+    name: Backend (.NET) tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.102"
+
+      - name: Restore
+        run: dotnet restore AzureAiCouncil.slnx
+
+      - name: Test
+        run: dotnet test AzureAiCouncil.slnx --configuration Release --no-restore --logger trx --results-directory ./TestResults --collect:"XPlat Code Coverage"
+
+      - name: Coverage summary (backend)
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import glob
+          import os
+          import xml.etree.ElementTree as ET
+
+          paths = glob.glob('TestResults/**/coverage.cobertura.xml', recursive=True)
+          if not paths:
+              print('No Cobertura coverage file found.')
+              raise SystemExit(0)
+
+          path = sorted(paths)[0]
+          root = ET.parse(path).getroot()
+          line_rate = float(root.attrib.get('line-rate', '0'))
+          branch_rate = float(root.attrib.get('branch-rate', '0'))
+
+          summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
+          if not summary_path:
+              raise SystemExit(0)
+
+          with open(summary_path, 'a', encoding='utf-8') as f:
+              f.write('## Coverage (backend)\n')
+              f.write(f'- Line: {line_rate * 100:.2f}%\n')
+              f.write(f'- Branch: {branch_rate * 100:.2f}%\n')
+              f.write(f'- Source: `{path}`\n\n')
+          PY
+
+      - name: Upload test results (TRX + coverage)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-testresults
+          path: TestResults/**
+
+  frontend-tests:
+    name: Frontend (Vite/Vitest) tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: web/azure-ai-council-spa
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/azure-ai-council-spa/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm run test:coverage
+
+      - name: Coverage summary (frontend)
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import pathlib
+
+          p = pathlib.Path('coverage/coverage-summary.json')
+          if not p.exists():
+              candidates = list(pathlib.Path('coverage').glob('**/*summary*.json'))
+              if candidates:
+                  p = candidates[0]
+              else:
+                  print('No frontend coverage summary JSON found.')
+                  raise SystemExit(0)
+
+          data = json.loads(p.read_text(encoding='utf-8'))
+          total = data.get('total', {})
+
+          def pct(key: str) -> float:
+              v = total.get(key, {})
+              return float(v.get('pct', 0.0))
+
+          summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
+          if not summary_path:
+              raise SystemExit(0)
+
+          with open(summary_path, 'a', encoding='utf-8') as f:
+              f.write('## Coverage (frontend)\n')
+              f.write(f'- Lines: {pct("lines"):.2f}%\n')
+              f.write(f'- Statements: {pct("statements"):.2f}%\n')
+              f.write(f'- Functions: {pct("functions"):.2f}%\n')
+              f.write(f'- Branches: {pct("branches"):.2f}%\n')
+              f.write(f'- Source: `{p.as_posix()}`\n\n')
+          PY
+
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: web/azure-ai-council-spa/coverage/**
