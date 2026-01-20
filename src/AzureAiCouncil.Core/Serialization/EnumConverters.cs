@@ -95,7 +95,7 @@ public sealed class PriorityJsonConverter : JsonConverter<Priority>
         writer.WriteStringValue(value switch
         {
             Priority.Low => "low",
-            Priority.Medium => "medium",
-            _ => "high",
+            Priority.High => "high",
+            _ => "medium",
         });
 }

@@ -39,7 +39,7 @@ public sealed class SpeakerAgent : ISpeakerAgent
 
         var options = JsonAgentHelpers.CreateCouncilJsonOptions(0.1f);
 
-        var response = await _agent.RunAsync(messages, thread: null, options: new ChatClientAgentRunOptions(options), cancellationToken);
+        var response = await _agent.RunAsync(messages, thread: null, options: new ChatClientAgentRunOptions(options), cancellationToken).ConfigureAwait(false);
         var text = response.Text;
         if (string.IsNullOrWhiteSpace(text))
         {

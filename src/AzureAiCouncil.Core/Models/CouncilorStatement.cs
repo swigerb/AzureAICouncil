@@ -1,7 +1,8 @@
-namespace AzureAiCouncil.Core.Models;
-
 using System.Text.Json.Serialization;
+
 using AzureAiCouncil.Core.Serialization;
+
+namespace AzureAiCouncil.Core.Models;
 
 public sealed record CouncilorStatement
 {
@@ -15,7 +16,7 @@ public sealed record CouncilorStatement
 
     public required string Rationale { get; init; }
 
-    public IReadOnlyList<string> RisksOrConcerns { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> RisksOrConcerns { get; init; } = [];
 
     [JsonConverter(typeof(TierJsonConverter))]
     public Tier CostTier { get; init; } = Tier.Unknown;
@@ -27,7 +28,7 @@ public sealed record CouncilorStatement
 
     public CouncilorPosition Position { get; init; } = new();
 
-    public IReadOnlyList<string> NotesForCouncil { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> NotesForCouncil { get; init; } = [];
 
     public string? MermaidHint { get; init; }
 

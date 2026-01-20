@@ -76,7 +76,7 @@ public static class ApiBootstrap
                     Budget = request.Constraints?.Budget,
                     Timeline = request.Constraints?.Timeline,
                     RiskTolerance = request.Constraints?.RiskTolerance ?? RiskTolerance.Unspecified,
-                    TechnologyPreferences = request.Constraints?.TechnologyPreferences ?? Array.Empty<string>(),
+                    TechnologyPreferences = request.Constraints?.TechnologyPreferences ?? [],
                 },
             };
 

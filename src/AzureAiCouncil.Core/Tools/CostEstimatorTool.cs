@@ -45,7 +45,7 @@ public sealed record CostEstimateResult
 
     public required Tier CostTier { get; init; }
 
-    public IReadOnlyList<string> CostDrivers { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> CostDrivers { get; init; } = [];
 
-    public IReadOnlyList<string> Notes { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Notes { get; init; } = [];
 }

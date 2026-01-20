@@ -97,7 +97,7 @@ public sealed class CouncilorAgent : ICouncilorAgent
     {
         try
         {
-            return await GetJsonTextAsync(messages, options, cancellationToken);
+            return await GetJsonTextAsync(messages, options, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -108,13 +108,13 @@ public sealed class CouncilorAgent : ICouncilorAgent
                 new(ChatRole.User, "Your last response was invalid or did not match the schema. Output ONLY a single valid JSON object that matches the required schema. No markdown, no prose.")
             };
 
-            return await GetJsonTextAsync(repair, options, cancellationToken);
+            return await GetJsonTextAsync(repair, options, cancellationToken).ConfigureAwait(false);
         }
     }
 
     private async Task<string> GetJsonTextAsync(IReadOnlyList<ChatMessage> messages, ChatOptions options, CancellationToken cancellationToken)
     {
-        var response = await _agent.RunAsync(messages, thread: null, options: new ChatClientAgentRunOptions(options), cancellationToken);
+        var response = await _agent.RunAsync(messages, thread: null, options: new ChatClientAgentRunOptions(options), cancellationToken).ConfigureAwait(false);
         var text = response.Text;
 
         if (string.IsNullOrWhiteSpace(text))

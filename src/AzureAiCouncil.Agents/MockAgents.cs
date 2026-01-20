@@ -9,14 +9,9 @@ public sealed class MockSpeakerAgent : ISpeakerAgent
         Task.FromResult(motion with { Question = motion.Question.Trim() });
 }
 
-public sealed class MockCouncilorAgent : ICouncilorAgent
+public sealed class MockCouncilorAgent(CouncilorKind kind) : ICouncilorAgent
 {
-    public MockCouncilorAgent(CouncilorKind kind)
-    {
-        Kind = kind;
-    }
-
-    public CouncilorKind Kind { get; }
+    public CouncilorKind Kind { get; } = kind;
 
     public Task<CouncilorStatement> ProduceStatementAsync(Motion motion, int round, string goal, IReadOnlyList<CouncilorStatement> priorStatements, CancellationToken cancellationToken)
     {

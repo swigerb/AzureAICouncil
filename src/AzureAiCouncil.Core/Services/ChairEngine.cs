@@ -60,9 +60,9 @@ public sealed class ChairEngine
 
         try
         {
-            await RunRoundAsync(deliberationId, deliberation.Motion, 1, "initial", cancellationToken);
-            await RunRoundAsync(deliberationId, deliberation.Motion, 2, "critique_refine", cancellationToken);
-            await RunRoundAsync(deliberationId, deliberation.Motion, 3, "final_vote", cancellationToken);
+            await RunRoundAsync(deliberationId, deliberation.Motion, 1, "initial", cancellationToken).ConfigureAwait(false);
+            await RunRoundAsync(deliberationId, deliberation.Motion, 2, "critique_refine", cancellationToken).ConfigureAwait(false);
+            await RunRoundAsync(deliberationId, deliberation.Motion, 3, "final_vote", cancellationToken).ConfigureAwait(false);
 
             var transcript = deliberation.Statements.ToArray();
 
@@ -73,7 +73,7 @@ public sealed class ChairEngine
                 State = "clerk_running",
             });
 
-            var resolution = await _clerk.ProduceResolutionAsync(deliberationId, deliberation.Motion, transcript, cancellationToken);
+            var resolution = await _clerk.ProduceResolutionAsync(deliberationId, deliberation.Motion, transcript, cancellationToken).ConfigureAwait(false);
 
             _store.SetResolution(deliberationId, resolution);
             _store.UpdateStatus(deliberationId, DeliberationStatus.ResolutionIssued);
@@ -143,7 +143,7 @@ public sealed class ChairEngine
 
         foreach (var councilorKind in CouncilorOrder)
         {
-            var statement = await tasks[councilorKind];
+            var statement = await tasks[councilorKind].ConfigureAwait(false);
 
             Publish(deliberationId, DeliberationEventType.CouncilorStatus, new CouncilorStatusUpdate
             {

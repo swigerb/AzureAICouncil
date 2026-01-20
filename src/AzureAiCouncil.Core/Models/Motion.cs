@@ -23,5 +23,5 @@ public sealed record MotionConstraints
     [JsonConverter(typeof(RiskToleranceJsonConverter))]
     public RiskTolerance RiskTolerance { get; init; } = RiskTolerance.Unspecified;
 
-    public IReadOnlyList<string> TechnologyPreferences { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> TechnologyPreferences { get; init; } = [];
 }

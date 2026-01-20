@@ -34,7 +34,7 @@ public sealed record ArchitecturePatternResult
 {
     public required string Scenario { get; init; }
 
-    public IReadOnlyList<string> Patterns { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Patterns { get; init; } = [];
 
-    public IReadOnlyList<string> Notes { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Notes { get; init; } = [];
 }
