@@ -15,6 +15,88 @@ It runs a 3-round “council” deliberation (parallel councilors, deterministic
 - `tests/` – xUnit unit tests
 - `web/azure-ai-council-spa/` – React/Vite UI
 
+## Agents (Microsoft Agent Framework)
+
+This project constructs and runs agents using the **Microsoft Agent Framework**:
+
+- Upstream repo: https://github.com/microsoft/agent-framework
+- Agent construction: `CreateAIAgent(...)` is called in `src/AzureAiCouncil.Agents/CouncilAgentFactory.cs`.
+- Agent execution: agents are invoked via `ChatClientAgent.RunAsync(...)` from the role wrappers:
+  - `src/AzureAiCouncil.Agents/CouncilorAgent.cs`
+  - `src/AzureAiCouncil.Agents/ClerkAgent.cs`
+  - `src/AzureAiCouncil.Agents/SpeakerAgent.cs`
+
+### Agent roles
+
+The council is intentionally split into role-focused agents so each one can optimize for a specific perspective:
+
+- **Speaker** (`ISpeakerAgent`): normalizes the incoming motion (question + constraints) into a consistent internal shape before deliberation starts.
+- **Councilors** (`ICouncilorAgent`): produce one structured statement per round. The built-in councilor roles are:
+  - `Vision`: goals, outcomes, success criteria
+  - `Risk`: risks, failure modes, mitigations
+  - `Architecture`: design options, tradeoffs, implementation approach
+  - `Security`: threats, controls, compliance considerations
+  - `Finance`: cost drivers, budget fit, ROI considerations
+- **Clerk** (`IClerkAgent`): synthesizes the full transcript into the final council resolution.
+
+Orchestration is handled by the **Chair** (`ChairEngine` in `AzureAiCouncil.Core`): it runs 3 rounds, starts councilors in parallel, then emits their statements in a deterministic order.
+
+If Azure OpenAI isn’t configured, the system falls back to **mock agents** (so the UI/SSE flow still works).
+
+### Interaction diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as React SPA
+    participant API as Minimal API
+    participant Speaker as SpeakerAgent
+    participant Store as DeliberationStore
+    participant Chair as ChairEngine
+    participant Bus as DeliberationEventBus
+    participant SSE as SSE endpoint
+    participant Vision as Councilor: Vision
+    participant Risk as Councilor: Risk
+    participant Arch as Councilor: Architecture
+    participant Sec as Councilor: Security
+    participant Fin as Councilor: Finance
+    participant Clerk as ClerkAgent
+    participant AOAI as Azure OpenAI
+
+    UI->>API: POST /api/motions (question + constraints)
+    API->>Speaker: NormalizeAsync(motion)
+    Speaker->>AOAI: (optional) structured normalization
+    API->>Store: Create deliberation
+    API-->>UI: 200 OK (deliberationId)
+
+    UI->>SSE: GET /api/deliberations/{id}/stream
+    SSE->>Bus: Subscribe(id)
+    Bus-->>SSE: events
+    SSE-->>UI: SSE events (round.started, statement, resolution, ...)
+
+    API->>Chair: RunAsync(deliberationId) [background]
+    Chair->>Bus: Publish session.started
+
+    loop Round 1..3
+        Chair->>Bus: Publish round.started
+        par Councilors run in parallel
+            Chair->>Vision: ProduceStatementAsync(...)
+            Chair->>Risk: ProduceStatementAsync(...)
+            Chair->>Arch: ProduceStatementAsync(...)
+            Chair->>Sec: ProduceStatementAsync(...)
+            Chair->>Fin: ProduceStatementAsync(...)
+        end
+        Note over Chair,Bus: Statements are emitted in a fixed order (Vision, Risk, Architecture, Security, Finance)
+        Chair->>Bus: Publish statement (ordered)
+        Chair->>Bus: Publish round.completed
+    end
+
+    Chair->>Clerk: ProduceResolutionAsync(transcript)
+    Clerk->>AOAI: (optional) final synthesis
+    Chair->>Store: Set resolution
+    Chair->>Bus: Publish resolution
+```
+
 ## Prerequisites
 
 - .NET SDK (repo is pinned via `global.json`)

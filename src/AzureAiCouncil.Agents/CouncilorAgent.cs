@@ -3,6 +3,7 @@ using System.Text.Json;
 using AzureAiCouncil.Core.Models;
 using AzureAiCouncil.Core.Services;
 using AzureAiCouncil.Core.Telemetry;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
@@ -10,20 +11,20 @@ namespace AzureAiCouncil.Agents;
 
 public sealed class CouncilorAgent : ICouncilorAgent
 {
-    private readonly IChatClient _chat;
+    private readonly ChatClientAgent _agent;
     private readonly CouncilTools _tools;
     private readonly PromptRenderer _prompts;
     private readonly ILogger<CouncilorAgent> _logger;
 
     public CouncilorAgent(
         CouncilorKind kind,
-        IChatClient chat,
+        ChatClientAgent agent,
         CouncilTools tools,
         PromptRenderer prompts,
         ILogger<CouncilorAgent> logger)
     {
         Kind = kind;
-        _chat = chat;
+        _agent = agent;
         _tools = tools;
         _prompts = prompts;
         _logger = logger;
@@ -113,7 +114,7 @@ public sealed class CouncilorAgent : ICouncilorAgent
 
     private async Task<string> GetJsonTextAsync(IReadOnlyList<ChatMessage> messages, ChatOptions options, CancellationToken cancellationToken)
     {
-        var response = await _chat.GetResponseAsync(messages, options, cancellationToken);
+        var response = await _agent.RunAsync(messages, thread: null, options: new ChatClientAgentRunOptions(options), cancellationToken);
         var text = response.Text;
 
         if (string.IsNullOrWhiteSpace(text))

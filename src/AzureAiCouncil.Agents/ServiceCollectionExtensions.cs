@@ -1,7 +1,6 @@
 using AzureAiCouncil.Core.Models;
 using AzureAiCouncil.Core.Services;
 using AzureAiCouncil.Core.Tools;
-using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -28,27 +27,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ArchitecturePatternTool>();
         services.AddSingleton<CouncilTools>();
 
-        services.AddSingleton<ICouncilChatClientFactory, CouncilChatClientFactory>();
-
-        services.AddSingleton<IChatClient>(sp =>
-        {
-            var options = sp.GetRequiredService<IOptions<AzureOpenAiOptions>>().Value;
-            var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("ChatClient");
-
-            if (!options.IsConfigured)
-            {
-                logger.LogWarning("AzureOpenAI is not configured; running in mock mode.");
-                return new NullChatClient();
-            }
-
-            return sp.GetRequiredService<ICouncilChatClientFactory>().Create();
-        });
+        services.AddSingleton<ICouncilAgentFactory, CouncilAgentFactory>();
 
         services.AddSingleton<ISpeakerAgent>(sp =>
         {
             var opts = sp.GetRequiredService<IOptions<AzureOpenAiOptions>>().Value;
             return opts.IsConfigured
-                ? new SpeakerAgent(sp.GetRequiredService<IChatClient>(), sp.GetRequiredService<PromptRenderer>(), sp.GetRequiredService<ILogger<SpeakerAgent>>())
+                ? new SpeakerAgent(sp.GetRequiredService<ICouncilAgentFactory>().CreateSpeakerAgent(), sp.GetRequiredService<PromptRenderer>(), sp.GetRequiredService<ILogger<SpeakerAgent>>())
                 : new MockSpeakerAgent();
         });
 
@@ -56,7 +41,7 @@ public static class ServiceCollectionExtensions
         {
             var opts = sp.GetRequiredService<IOptions<AzureOpenAiOptions>>().Value;
             return opts.IsConfigured
-                ? new ClerkAgent(sp.GetRequiredService<IChatClient>(), sp.GetRequiredService<PromptRenderer>(), sp.GetRequiredService<ILogger<ClerkAgent>>())
+                ? new ClerkAgent(sp.GetRequiredService<ICouncilAgentFactory>().CreateClerkAgent(), sp.GetRequiredService<PromptRenderer>(), sp.GetRequiredService<ILogger<ClerkAgent>>())
                 : new MockClerkAgent();
         });
 
@@ -79,27 +64,9 @@ public static class ServiceCollectionExtensions
 
         return new CouncilorAgent(
             kind,
-            sp.GetRequiredService<IChatClient>(),
+            sp.GetRequiredService<ICouncilAgentFactory>().CreateCouncilorAgent(kind),
             sp.GetRequiredService<CouncilTools>(),
             sp.GetRequiredService<PromptRenderer>(),
             sp.GetRequiredService<ILogger<CouncilorAgent>>());
-    }
-
-    // Used only as a DI placeholder when AzureOpenAI is not configured.
-    private sealed class NullChatClient : IChatClient
-    {
-        public object? Metadata => null;
-
-        public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
-            throw new InvalidOperationException("AzureOpenAI is not configured.");
-
-        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
-            throw new InvalidOperationException("AzureOpenAI is not configured.");
-
-        public object? GetService(Type serviceType, object? serviceKey = null) => null;
-
-        public void Dispose()
-        {
-        }
     }
 }

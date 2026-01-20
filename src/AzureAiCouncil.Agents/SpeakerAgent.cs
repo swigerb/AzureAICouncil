@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AzureAiCouncil.Core.Models;
 using AzureAiCouncil.Core.Services;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
@@ -8,13 +9,13 @@ namespace AzureAiCouncil.Agents;
 
 public sealed class SpeakerAgent : ISpeakerAgent
 {
-    private readonly IChatClient _chat;
+    private readonly ChatClientAgent _agent;
     private readonly PromptRenderer _prompts;
     private readonly ILogger<SpeakerAgent> _logger;
 
-    public SpeakerAgent(IChatClient chat, PromptRenderer prompts, ILogger<SpeakerAgent> logger)
+    public SpeakerAgent(ChatClientAgent agent, PromptRenderer prompts, ILogger<SpeakerAgent> logger)
     {
-        _chat = chat;
+        _agent = agent;
         _prompts = prompts;
         _logger = logger;
     }
@@ -38,7 +39,7 @@ public sealed class SpeakerAgent : ISpeakerAgent
 
         var options = JsonAgentHelpers.CreateCouncilJsonOptions(0.1f);
 
-        var response = await _chat.GetResponseAsync(messages, options, cancellationToken);
+        var response = await _agent.RunAsync(messages, thread: null, options: new ChatClientAgentRunOptions(options), cancellationToken);
         var text = response.Text;
         if (string.IsNullOrWhiteSpace(text))
         {
