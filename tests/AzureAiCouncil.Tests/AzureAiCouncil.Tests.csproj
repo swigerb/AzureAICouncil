@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\AzureAiCouncil.Agents\AzureAiCouncil.Agents.csproj" />
     <ProjectReference Include="..\..\src\AzureAiCouncil.Core\AzureAiCouncil.Core.csproj" />
   </ItemGroup>
 

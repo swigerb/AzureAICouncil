@@ -66,6 +66,16 @@ public sealed class ApiEndpointsTests : IClassFixture<ApiTestAppFactory>
         Assert.True(snapshotDoc.RootElement.TryGetProperty("motion", out _));
         Assert.True(snapshotDoc.RootElement.TryGetProperty("status", out _));
     }
+
+    [Fact]
+    public async Task Get_nonexistent_deliberation_returns_404()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/deliberations/nonexistent-id-12345");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }
 
 public sealed class ApiSseStreamingTests : IClassFixture<KestrelApiFixture>
