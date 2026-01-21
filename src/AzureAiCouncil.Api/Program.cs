@@ -6,7 +6,9 @@ using AzureAiCouncil.Core.Models;
 using AzureAiCouncil.Core.Services;
 using AzureAiCouncil.Core.Telemetry;
 using System.Diagnostics;
+using System.Reflection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 ApiBootstrap.ConfigureBuilder(builder);
@@ -75,6 +77,40 @@ public static class ApiBootstrap
         if (app.Environment.IsDevelopment())
         {
             app.MapOpenApi();
+
+            app.MapGet("/api/debug/config", (
+                IHostEnvironment env,
+                IConfiguration config,
+                IOptions<AzureOpenAiOptions> aoaiOptions) =>
+            {
+                var aoai = aoaiOptions.Value;
+                var otlp = config["OTEL_EXPORTER_OTLP_ENDPOINT"];
+                if (string.IsNullOrWhiteSpace(otlp))
+                {
+                    otlp = config["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"];
+                }
+
+                string? endpointHost = null;
+                if (!string.IsNullOrWhiteSpace(aoai.Endpoint) && Uri.TryCreate(aoai.Endpoint, UriKind.Absolute, out var endpointUri))
+                {
+                    endpointHost = endpointUri.Host;
+                }
+
+                return Results.Ok(new DebugConfigResponse
+                {
+                    Environment = env.EnvironmentName,
+                    ApplicationName = env.ApplicationName,
+                    AssemblyVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                    AspNetCoreUrls = config["ASPNETCORE_URLS"],
+                    OtlpEndpoint = otlp,
+                    Agents = new DebugAgentConfig
+                    {
+                        AzureOpenAiConfigured = aoai.IsConfigured,
+                        AzureOpenAiEndpointHost = endpointHost,
+                        AzureOpenAiDeployment = string.IsNullOrWhiteSpace(aoai.Deployment) ? null : aoai.Deployment,
+                    },
+                });
+            });
         }
 
         app.UseCors("spa");
@@ -160,6 +196,7 @@ public static class ApiBootstrap
         {
             context.Response.Headers.CacheControl = "no-cache";
             context.Response.Headers.Connection = "keep-alive";
+            context.Response.Headers["X-Accel-Buffering"] = "no";
             context.Response.ContentType = "text/event-stream";
 
             logger.LogInformation("SSE stream connected for {DeliberationId} from {Origin}", id, context.Request.Headers.Origin.ToString());
@@ -173,42 +210,71 @@ public static class ApiBootstrap
             var pingInterval = TimeSpan.FromSeconds(15);
             var abort = context.RequestAborted;
 
-            while (!abort.IsCancellationRequested)
+            try
             {
-                var waitToReadTask = subscription.Reader.WaitToReadAsync(abort).AsTask();
-                var completed = await Task.WhenAny(waitToReadTask, Task.Delay(pingInterval, abort));
-
-                if (completed != waitToReadTask)
+                while (!abort.IsCancellationRequested)
                 {
-                    await SseWriter.WriteEventAsync(context, "stream.ping", "{}", eventId: null, abort);
-                    continue;
-                }
+                    var waitToReadTask = subscription.Reader.WaitToReadAsync(abort).AsTask();
+                    var completed = await Task.WhenAny(waitToReadTask, Task.Delay(pingInterval, abort));
 
-                if (!await waitToReadTask)
-                {
-                    break;
-                }
-
-                while (subscription.Reader.TryRead(out var ev))
-                {
-                    var eventName = ev.Type switch
+                    if (completed != waitToReadTask)
                     {
-                        DeliberationEventType.SessionStarted => "session.started",
-                        DeliberationEventType.RoundStarted => "round.started",
-                        DeliberationEventType.CouncilorStatus => "councilor.status",
-                        DeliberationEventType.Statement => "statement",
-                        DeliberationEventType.RoundCompleted => "round.completed",
-                        DeliberationEventType.Resolution => "resolution",
-                        DeliberationEventType.Error => "error",
-                        _ => "event",
-                    };
+                        await SseWriter.WriteEventAsync(context, "stream.ping", "{}", eventId: null, abort);
+                        continue;
+                    }
 
-                    var data = JsonSerializer.Serialize(ev.Data, JsonAgentHelpers.JsonOptions);
-                    await SseWriter.WriteEventAsync(context, eventName, data, ev.EventId.ToString(), abort);
+                    if (!await waitToReadTask)
+                    {
+                        break;
+                    }
+
+                    while (subscription.Reader.TryRead(out var ev))
+                    {
+                        var eventName = ev.Type switch
+                        {
+                            DeliberationEventType.SessionStarted => "session.started",
+                            DeliberationEventType.RoundStarted => "round.started",
+                            DeliberationEventType.CouncilorStatus => "councilor.status",
+                            DeliberationEventType.Statement => "statement",
+                            DeliberationEventType.RoundCompleted => "round.completed",
+                            DeliberationEventType.Resolution => "resolution",
+                            DeliberationEventType.Error => "error",
+                            _ => "event",
+                        };
+
+                        var data = JsonSerializer.Serialize(ev.Data, JsonAgentHelpers.JsonOptions);
+                        await SseWriter.WriteEventAsync(context, eventName, data, ev.EventId.ToString(), abort);
+                    }
                 }
+            }
+            catch (OperationCanceledException) when (abort.IsCancellationRequested)
+            {
+                // Expected on client disconnect.
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "SSE stream failed for {DeliberationId}", id);
+                throw;
             }
         });
     }
+}
+
+sealed record DebugConfigResponse
+{
+    public required string Environment { get; init; }
+    public required string ApplicationName { get; init; }
+    public string? AssemblyVersion { get; init; }
+    public string? AspNetCoreUrls { get; init; }
+    public string? OtlpEndpoint { get; init; }
+    public required DebugAgentConfig Agents { get; init; }
+}
+
+sealed record DebugAgentConfig
+{
+    public required bool AzureOpenAiConfigured { get; init; }
+    public string? AzureOpenAiEndpointHost { get; init; }
+    public string? AzureOpenAiDeployment { get; init; }
 }
 
 sealed record CreateMotionRequest

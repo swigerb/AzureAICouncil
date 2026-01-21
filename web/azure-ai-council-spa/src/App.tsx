@@ -93,6 +93,9 @@ function App() {
                     setError(`${p.where}: ${p.message}`)
                   },
                 })
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : String(e)
+                setError(`client: ${msg}`)
               } finally {
                 setIsSubmitting(false)
               }

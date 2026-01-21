@@ -36,6 +36,26 @@ public sealed class ApiEndpointsTests : IClassFixture<ApiTestAppFactory>
     }
 
     [Fact]
+    public async Task Debug_config_endpoint_is_exposed_in_development_and_does_not_leak_secrets()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/debug/config");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal("Development", doc.RootElement.GetProperty("environment").GetString());
+        Assert.True(doc.RootElement.TryGetProperty("agents", out var agents));
+        Assert.True(agents.TryGetProperty("azureOpenAiConfigured", out _));
+
+        // Verify we don't accidentally include sensitive keys.
+        var raw = doc.RootElement.ToString();
+        Assert.DoesNotContain("ApiKey", raw, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("azureopenai:apikey", raw, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Create_motion_returns_deliberation_id_and_snapshot_is_retrievable()
     {
         using var client = _factory.CreateClient();

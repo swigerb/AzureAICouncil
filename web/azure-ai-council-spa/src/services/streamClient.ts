@@ -50,7 +50,7 @@ export function connectDeliberationStream(deliberationId: string, handlers: Stre
 
   es.onerror = () => {
     // Browser will retry automatically; surface a lightweight error.
-    handlers.onError?.({ where: 'sse', message: 'SSE connection error (browser will retry).', retryable: true })
+    handlers.onError?.({ where: 'sse', message: `SSE connection error (browser will retry). apiBaseUrl=${apiBaseUrl()}`, retryable: true })
   }
 
   return {
