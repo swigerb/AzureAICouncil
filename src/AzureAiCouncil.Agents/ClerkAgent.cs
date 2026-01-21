@@ -33,7 +33,12 @@ public sealed class ClerkAgent : IClerkAgent
         activity?.SetTag(CouncilTelemetry.Tags.MotionId, motion.MotionId);
         activity?.SetTag("council.transcript_count", transcript.Count);
 
-        var prompt = _prompts.RenderFromFile(PromptCatalog.Clerk, new Dictionary<string, string>());
+        var resolutionSchema = File.ReadAllText(PromptCatalog.ResolutionJsonSchema);
+
+        var prompt = _prompts.RenderFromFile(PromptCatalog.Clerk, new Dictionary<string, string>
+        {
+            ["ResolutionJsonSchema"] = resolutionSchema,
+        });
 
         var input = new
         {
@@ -70,7 +75,7 @@ public sealed class ClerkAgent : IClerkAgent
             _logger.LogWarning(ex, "Invalid JSON from clerk; retrying once");
             var repair = new List<ChatMessage>(messages)
             {
-                new(ChatRole.User, "Your last response was invalid or did not match the schema. Output ONLY a single valid JSON object that matches the required schema. No markdown, no prose.")
+                new(ChatRole.User, "Your last response was invalid or did not match the schema (missing or malformed required fields). Output ONLY a single valid CouncilResolution JSON object matching the schema, with non-empty deliberationId, summary, and recommendation. No markdown, no prose.")
             };
             return await GetJsonTextAsync(repair, options, cancellationToken).ConfigureAwait(false);
         }
@@ -86,8 +91,88 @@ public sealed class ClerkAgent : IClerkAgent
             throw new InvalidOperationException("Model returned empty response.");
         }
 
+        // Small normalization for accidental code fences.
         text = text.Trim();
+        if (text.StartsWith("```", StringComparison.Ordinal))
+        {
+            text = text.Trim('`');
+            var idx = text.IndexOf('{');
+            if (idx >= 0)
+            {
+                text = text.Substring(idx);
+            }
+        }
+
+        // Validate parse early.
         _ = JsonAgentHelpers.ParseJsonOrThrow<JsonElement>(text);
-        return text;
+
+        // Ensure the shape matches CouncilResolution before deserializing into a type with required properties.
+        return ExtractAndValidateCouncilResolutionJson(text);
+    }
+
+    private static string ExtractAndValidateCouncilResolutionJson(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidOperationException("Expected a single JSON object.");
+        }
+
+        var candidate = doc.RootElement;
+        var unwrapped = false;
+
+        // Common wrapper keys used by models.
+        foreach (var wrapperKey in new[] { "resolution", "councilResolution", "council_resolution" })
+        {
+            if (TryGetPropertyIgnoreCase(candidate, wrapperKey, out var wrapped)
+                && wrapped.ValueKind == JsonValueKind.Object)
+            {
+                candidate = wrapped;
+                unwrapped = true;
+                break;
+            }
+        }
+
+        var required = new[] { "deliberationId", "summary", "recommendation" };
+        var missing = new List<string>();
+
+        foreach (var key in required)
+        {
+            if (!TryGetPropertyIgnoreCase(candidate, key, out var value)
+                || value.ValueKind != JsonValueKind.String
+                || string.IsNullOrWhiteSpace(value.GetString()))
+            {
+                missing.Add(key);
+            }
+        }
+
+        if (missing.Count > 0)
+        {
+            throw new InvalidOperationException($"CouncilResolution JSON was missing required properties: {string.Join(", ", missing)}");
+        }
+
+        // If we unwrapped, return the unwrapped object JSON; otherwise keep the original.
+        if (unwrapped)
+        {
+            return JsonSerializer.Serialize(candidate, JsonAgentHelpers.JsonOptions);
+        }
+
+        return json;
+    }
+
+    private static bool TryGetPropertyIgnoreCase(JsonElement obj, string name, out JsonElement value)
+    {
+        foreach (var prop in obj.EnumerateObject())
+        {
+            if (prop.NameEquals(name) || string.Equals(prop.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                value = prop.Value;
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
     }
 }

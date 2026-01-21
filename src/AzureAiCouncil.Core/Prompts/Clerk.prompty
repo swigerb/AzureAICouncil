@@ -11,3 +11,6 @@ Rules:
 - Output MUST be valid JSON only.
 - DeliberationId must be populated.
 - If you include Mermaid, it must be a string containing a mermaid code block (```mermaid ... ```), or empty string.
+
+CouncilResolution JSON schema:
+{{ResolutionJsonSchema}}
