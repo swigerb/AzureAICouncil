@@ -1,9 +1,6 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 var api = builder.AddProject<Projects.AzureAiCouncil_Api>("api")
-	// Keep a stable local dev port so the SPA's defaultBaseUrl (http://localhost:5139) works
-	// even when the SPA isn't started by Aspire and VITE_API_BASE_URL isn't injected.
-	.WithEnvironment("ASPNETCORE_URLS", "http://localhost:5139")
 	.WithExternalHttpEndpoints();
 
 // Run the Vite SPA dev server as an executable resource so it starts/stops with the AppHost.
@@ -55,12 +52,14 @@ var npmPath = FindOnPath(npmExe);
 
 if (npmPath is not null && Directory.Exists(spaWorkingDir))
 {
-	var spa = builder.AddExecutable(
-			"spa",
-			npmExe,
-			"run dev -- --port 5173 --strictPort")
-		.WithWorkingDirectory(spaWorkingDir)
+	// On Windows, npm is a .cmd shim. Execute it through cmd.exe to avoid CreateProcess issues.
+	var spaExe = OperatingSystem.IsWindows() ? "cmd.exe" : npmExe;
+	var spa = OperatingSystem.IsWindows()
+		? builder.AddExecutable("spa", spaExe, spaWorkingDir, "/c", "npm", "run", "dev", "--", "--port", "5173")
+		: builder.AddExecutable("spa", spaExe, spaWorkingDir, "run", "dev", "--", "--port", "5173")
 		.WithExternalHttpEndpoints();
+
+	spa.WithEnvironment("BROWSER", "none");
 
 	// Best-effort wiring: pass API base URL into the SPA.
 	// Prefer HTTP locally to avoid dev-cert trust issues that can break fetch/EventSource.

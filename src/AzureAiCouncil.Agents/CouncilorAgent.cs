@@ -56,6 +56,8 @@ public sealed class CouncilorAgent : ICouncilorAgent
 
         var motionJson = JsonAgentHelpers.ToJson(motion);
 
+		var councilorSchema = File.ReadAllText(PromptCatalog.CouncilorJsonSchema);
+
         var peerStatements = priorStatements.Count == 0
             ? ""
             : JsonSerializer.Serialize(priorStatements, JsonAgentHelpers.JsonOptions);
@@ -66,6 +68,7 @@ public sealed class CouncilorAgent : ICouncilorAgent
             ["Goal"] = goal,
             ["MotionJson"] = motionJson,
             ["PeerStatements"] = peerStatements,
+			["CouncilorJsonSchema"] = councilorSchema,
         });
 
         var messages = new List<ChatMessage>

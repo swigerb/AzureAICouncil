@@ -65,6 +65,30 @@ public sealed class SerializationTests
         Assert.Contains("\"riskTolerance\":\"high\"", json);
     }
 
+    [Theory]
+    [InlineData("go", GoNoGo.Go)]
+    [InlineData("no_go", GoNoGo.No_Go)]
+    [InlineData("mixed", GoNoGo.Mixed)]
+    public void CouncilorPosition_can_be_deserialized_from_string(string position, GoNoGo expected)
+    {
+        var json = $$"""
+        {
+          "councilor": "Security",
+          "round": 1,
+          "stanceTitle": "t",
+          "answer": "a",
+          "rationale": "r",
+          "confidence": 0.9,
+          "position": "{{position}}"
+        }
+        """;
+
+        var statement = JsonSerializer.Deserialize<CouncilorStatement>(json, WireJson);
+
+        Assert.NotNull(statement);
+        Assert.Equal(expected, statement.Position.GoNoGo);
+    }
+
     // TierJsonConverter tests
     [Theory]
     [InlineData(Tier.Low, "low")]

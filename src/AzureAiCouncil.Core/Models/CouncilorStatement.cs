@@ -26,6 +26,7 @@ public sealed record CouncilorStatement
 
     public double Confidence { get; init; }
 
+    [JsonConverter(typeof(CouncilorPositionJsonConverter))]
     public CouncilorPosition Position { get; init; } = new();
 
     public IReadOnlyList<string> NotesForCouncil { get; init; } = [];

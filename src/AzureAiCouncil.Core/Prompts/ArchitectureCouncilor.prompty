@@ -14,3 +14,6 @@ Rules:
 - Output MUST be valid JSON only.
 - councilor must be "Architecture".
 - round must be {{Round}}.
+
+CouncilorStatement JSON schema:
+{{CouncilorJsonSchema}}

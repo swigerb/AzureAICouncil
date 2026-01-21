@@ -4,6 +4,9 @@ public static class PromptCatalog
 {
     public static string PromptsRoot => Path.Combine(AppContext.BaseDirectory, "Prompts");
 
+    public static string CouncilorJsonSchema => Path.Combine(PromptsRoot, "CouncilorJsonSchema.txt");
+    public static string ResolutionJsonSchema => Path.Combine(PromptsRoot, "ResolutionJsonSchema.txt");
+
     public static string Speaker => Path.Combine(PromptsRoot, "Speaker.prompty");
     public static string Chair => Path.Combine(PromptsRoot, "Chair.prompty");
 

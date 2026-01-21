@@ -13,3 +13,6 @@ Rules:
 - Output MUST be valid JSON only.
 - councilor must be "Finance".
 - round must be {{Round}}.
+
+CouncilorStatement JSON schema:
+{{CouncilorJsonSchema}}
