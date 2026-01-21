@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AzureAiCouncil.Core.Models;
 using Microsoft.Extensions.AI;
 
@@ -10,6 +11,13 @@ public static class JsonAgentHelpers
     {
         WriteIndented = false,
     };
+
+    static JsonAgentHelpers()
+    {
+        // LLM and UI payloads frequently represent enums as strings (e.g. "Vision").
+        // Ensure our shared JSON options can parse/emit string enums consistently.
+        JsonOptions.Converters.Add(new JsonStringEnumConverter());
+    }
 
     public static string ToJson<T>(T value) => JsonSerializer.Serialize(value, JsonOptions);
 

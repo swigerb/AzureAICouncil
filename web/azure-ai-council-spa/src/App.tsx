@@ -70,6 +70,9 @@ function App() {
                 setResolution(snapshot.resolution ?? null)
 
                 streamRef.current = connectDeliberationStream(resp.deliberationId, {
+                  onConnected: () => {
+                    setError(undefined)
+                  },
                   onRoundStarted: (p) => {
                     setStatus(`Deliberation Round ${p.round}`)
                   },

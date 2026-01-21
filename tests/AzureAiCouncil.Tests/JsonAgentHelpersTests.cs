@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AzureAiCouncil.Agents;
 using AzureAiCouncil.Core.Models;
+using AzureAiCouncil.Core.Services;
 using Microsoft.Extensions.AI;
 
 namespace AzureAiCouncil.Tests;
@@ -66,6 +67,19 @@ public sealed class JsonAgentHelpersTests
 
         Assert.Throws<JsonException>(() =>
             JsonAgentHelpers.ParseJsonOrThrow<TestPerson>(json));
+    }
+
+    [Fact]
+    public void ParseJsonOrThrow_supports_string_enum_values()
+    {
+        // Model/agent JSON commonly uses enum names rather than numeric values.
+        var json = """{"round":1,"councilor":"Vision","state":"running"}""";
+
+        var result = JsonAgentHelpers.ParseJsonOrThrow<CouncilorStatusUpdate>(json);
+
+        Assert.Equal(1, result.Round);
+        Assert.Equal(CouncilorKind.Vision, result.Councilor);
+        Assert.Equal("running", result.State);
     }
 
     [Fact]

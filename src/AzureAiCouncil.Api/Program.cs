@@ -4,6 +4,8 @@ using AzureAiCouncil.Agents;
 using AzureAiCouncil.Api.Streaming;
 using AzureAiCouncil.Core.Models;
 using AzureAiCouncil.Core.Services;
+using AzureAiCouncil.Core.Telemetry;
+using System.Diagnostics;
 using Microsoft.Extensions.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,9 +37,29 @@ public static class ApiBootstrap
         {
             options.AddPolicy("spa", policy =>
             {
-                policy.WithOrigins("http://localhost:5173")
-                    .AllowAnyHeader()
-                    .AllowAnyMethod();
+                // In development the SPA may run on varying ports (Vite, Aspire, etc.).
+                // Allow loopback origins broadly to keep SSE and fetch working.
+                if (builder.Environment.IsDevelopment())
+                {
+                    policy
+                        .SetIsOriginAllowed(origin =>
+                        {
+                            if (string.IsNullOrWhiteSpace(origin)) return false;
+                            if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
+
+                            return uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                                   || uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+                                   || uri.Host.Equals("[::1]", StringComparison.OrdinalIgnoreCase);
+                        })
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                }
+                else
+                {
+                    policy.WithOrigins("http://localhost:5173")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                }
             });
         });
 
@@ -67,6 +89,8 @@ public static class ApiBootstrap
             ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
         {
+            using var activity = CouncilTelemetry.ActivitySource.StartActivity("api.motion.create", ActivityKind.Server);
+
             var motion = new Motion
             {
                 MotionId = Guid.NewGuid().ToString("n"),
@@ -82,6 +106,10 @@ public static class ApiBootstrap
 
             var normalized = await speaker.NormalizeAsync(motion, cancellationToken);
             var deliberation = store.Create(normalized);
+
+            activity?.SetTag(CouncilTelemetry.Tags.DeliberationId, deliberation.DeliberationId);
+            activity?.SetTag(CouncilTelemetry.Tags.MotionId, deliberation.Motion.MotionId);
+            activity?.SetTag("council.question_length", request.Question.Length);
 
             var logger = loggerFactory.CreateLogger("DeliberationRunner");
 
@@ -128,32 +156,56 @@ public static class ApiBootstrap
                 : Results.NotFound();
         });
 
-        app.MapGet("/api/deliberations/{id}/stream", async (string id, HttpContext context, IDeliberationEventBus bus) =>
+        app.MapGet("/api/deliberations/{id}/stream", async (string id, HttpContext context, IDeliberationEventBus bus, ILogger<Program> logger) =>
         {
             context.Response.Headers.CacheControl = "no-cache";
             context.Response.Headers.Connection = "keep-alive";
             context.Response.ContentType = "text/event-stream";
 
+            logger.LogInformation("SSE stream connected for {DeliberationId} from {Origin}", id, context.Request.Headers.Origin.ToString());
+            context.RequestAborted.Register(() =>
+                logger.LogInformation("SSE stream disconnected for {DeliberationId}", id));
+
             await using var subscription = bus.Subscribe(id);
 
             await SseWriter.WriteEventAsync(context, "stream.ready", "{}", eventId: null, context.RequestAborted);
 
-            await foreach (var ev in subscription.Reader.ReadAllAsync(context.RequestAborted))
-            {
-                var eventName = ev.Type switch
-                {
-                    DeliberationEventType.SessionStarted => "session.started",
-                    DeliberationEventType.RoundStarted => "round.started",
-                    DeliberationEventType.CouncilorStatus => "councilor.status",
-                    DeliberationEventType.Statement => "statement",
-                    DeliberationEventType.RoundCompleted => "round.completed",
-                    DeliberationEventType.Resolution => "resolution",
-                    DeliberationEventType.Error => "error",
-                    _ => "event",
-                };
+            var pingInterval = TimeSpan.FromSeconds(15);
+            var abort = context.RequestAborted;
 
-                var data = JsonSerializer.Serialize(ev.Data, JsonAgentHelpers.JsonOptions);
-                await SseWriter.WriteEventAsync(context, eventName, data, ev.EventId.ToString(), context.RequestAborted);
+            while (!abort.IsCancellationRequested)
+            {
+                var waitToReadTask = subscription.Reader.WaitToReadAsync(abort).AsTask();
+                var completed = await Task.WhenAny(waitToReadTask, Task.Delay(pingInterval, abort));
+
+                if (completed != waitToReadTask)
+                {
+                    await SseWriter.WriteEventAsync(context, "stream.ping", "{}", eventId: null, abort);
+                    continue;
+                }
+
+                if (!await waitToReadTask)
+                {
+                    break;
+                }
+
+                while (subscription.Reader.TryRead(out var ev))
+                {
+                    var eventName = ev.Type switch
+                    {
+                        DeliberationEventType.SessionStarted => "session.started",
+                        DeliberationEventType.RoundStarted => "round.started",
+                        DeliberationEventType.CouncilorStatus => "councilor.status",
+                        DeliberationEventType.Statement => "statement",
+                        DeliberationEventType.RoundCompleted => "round.completed",
+                        DeliberationEventType.Resolution => "resolution",
+                        DeliberationEventType.Error => "error",
+                        _ => "event",
+                    };
+
+                    var data = JsonSerializer.Serialize(ev.Data, JsonAgentHelpers.JsonOptions);
+                    await SseWriter.WriteEventAsync(context, eventName, data, ev.EventId.ToString(), abort);
+                }
             }
         });
     }

@@ -39,6 +39,9 @@ public sealed class MockClerkAgent : IClerkAgent
 {
     public Task<CouncilResolution> ProduceResolutionAsync(string deliberationId, Motion motion, IReadOnlyList<CouncilorStatement> transcript, CancellationToken cancellationToken)
     {
+        var mermaid = transcript.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s.MermaidHint))?.MermaidHint
+            ?? "graph LR; User-->SPA; SPA-->API; API-->Council;";
+
         var resolution = new CouncilResolution
         {
             DeliberationId = deliberationId,
@@ -50,7 +53,7 @@ public sealed class MockClerkAgent : IClerkAgent
             WhenThisIsAGoodIdea = new[] { "Validating the API/streaming UX" },
             WhenToAvoid = new[] { "When you need real deliberation quality" },
             SuggestedNextSteps = new[] { "Set AzureOpenAI config", "Restart AppHost", "Submit a motion" },
-            MermaidArchitectureSnippet = "",
+            MermaidArchitectureSnippet = mermaid,
         };
 
         return Task.FromResult(resolution);

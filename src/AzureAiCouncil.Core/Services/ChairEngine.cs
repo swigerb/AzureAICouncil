@@ -84,6 +84,9 @@ public sealed class ChairEngine
         }
         catch (Exception ex)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.SetTag("exception.type", ex.GetType().FullName);
+            activity?.SetTag("exception.message", ex.Message);
             _store.UpdateStatus(deliberationId, DeliberationStatus.Failed);
             Publish(deliberationId, DeliberationEventType.Error, new ErrorUpdate
             {

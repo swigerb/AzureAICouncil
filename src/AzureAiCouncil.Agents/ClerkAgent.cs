@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Text.Json;
 using AzureAiCouncil.Core.Models;
 using AzureAiCouncil.Core.Services;
+using AzureAiCouncil.Core.Telemetry;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -26,6 +28,11 @@ public sealed class ClerkAgent : IClerkAgent
         IReadOnlyList<CouncilorStatement> transcript,
         CancellationToken cancellationToken)
     {
+        using var activity = CouncilTelemetry.ActivitySource.StartActivity("council.clerk", ActivityKind.Internal);
+        activity?.SetTag(CouncilTelemetry.Tags.DeliberationId, deliberationId);
+        activity?.SetTag(CouncilTelemetry.Tags.MotionId, motion.MotionId);
+        activity?.SetTag("council.transcript_count", transcript.Count);
+
         var prompt = _prompts.RenderFromFile(PromptCatalog.Clerk, new Dictionary<string, string>());
 
         var input = new

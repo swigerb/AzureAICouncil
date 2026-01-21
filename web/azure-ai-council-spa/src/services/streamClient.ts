@@ -9,6 +9,7 @@ import type {
 import { apiBaseUrl } from './apiClient'
 
 export type StreamHandlers = {
+  onConnected?: () => void
   onRoundStarted?: (payload: RoundStartedUpdate) => void
   onCouncilorStatus?: (payload: CouncilorStatusUpdate) => void
   onStatement?: (payload: CouncilorStatement) => void
@@ -20,9 +21,17 @@ export function connectDeliberationStream(deliberationId: string, handlers: Stre
   const url = `${apiBaseUrl()}/api/deliberations/${encodeURIComponent(deliberationId)}/stream`
   const es = new EventSource(url)
 
+  let isConnected = false
+  const markConnected = () => {
+    if (isConnected) return
+    isConnected = true
+    handlers.onConnected?.()
+  }
+
   const listen = <T>(event: StreamEventName, cb?: (payload: T) => void) => {
     if (!cb) return
     es.addEventListener(event, (e) => {
+      markConnected()
       const msg = e as MessageEvent<string>
       cb(JSON.parse(msg.data) as T)
     })
@@ -36,7 +45,7 @@ export function connectDeliberationStream(deliberationId: string, handlers: Stre
 
   // Basic connectivity checks
   es.addEventListener('stream.ready', () => {
-    // no-op
+    markConnected()
   })
 
   es.onerror = () => {

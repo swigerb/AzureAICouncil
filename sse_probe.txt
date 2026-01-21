@@ -1,0 +1,56 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+HTTP/1.1 200 OK
+Connection: keep-alive
+Content-Type: text/event-stream
+Date: Wed, 21 Jan 2026 14:11:34 GMT
+Server: Kestrel
+Access-Control-Allow-Origin: http://localhost:5173
+Cache-Control: no-cache
+Transfer-Encoding: chunked
+Vary: Origin
+
+event: stream.ready
+data: {}
+
+id: 17
+event: session.started
+data: {"deliberationId":"6bf639e191a342c1988c73f4a00d4e64","motionId":"111fedbc4d37453c9bdbc488bcbc9340","councilors":[{"councilor":"Vision","order":0},{"councilor":"Risk","order":1},{"councilor":"Architecture","order":2},{"councilor":"Security","order":3},{"councilor":"Finance","order":4}],"roundsPlanned":3}
+
+id: 18
+event: round.started
+data: {"round":1,"goal":"initial"}
+
+id: 19
+event: councilor.status
+data: {"round":1,"councilor":0,"state":"running"}
+
+id: 20
+event: councilor.status
+data: {"round":1,"councilor":1,"state":"running"}
+
+id: 21
+event: councilor.status
+data: {"round":1,"councilor":2,"state":"running"}
+
+id: 22
+event: councilor.status
+data: {"round":1,"councilor":3,"state":"running"}
+
+id: 23
+event: councilor.status
+data: {"round":1,"councilor":4,"state":"running"}
+
+id: 24
+event: error
+data: {"where":"chair","message":"The JSON value could not be converted to AzureAiCouncil.Core.Models.CouncilorKind. Path: $.councilor | LineNumber: 0 | BytePositionInLine: 21.","retryable":false}
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100  1064    0  1064    0     0   4994      0 --:--:-- --:--:-- --:--:--  4971
+100  1064    0  1064    0     0    866      0 --:--:--  0:00:01 --:--:--   866
+100  1064    0  1064    0     0    475      0 --:--:--  0:00:02 --:--:--   475
+100  1064    0  1064    0     0    327      0 --:--:--  0:00:03 --:--:--   327
+100  1064    0  1064    0     0    250      0 --:--:--  0:00:04 --:--:--   250
+100  1064    0  1064    0     0    212      0 --:--:--  0:00:05 --:--:--     0
+curl: (28) Operation timed out after 5015 milliseconds with 1064 bytes received

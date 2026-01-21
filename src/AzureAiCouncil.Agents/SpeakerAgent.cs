@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Text.Json;
 using AzureAiCouncil.Core.Models;
 using AzureAiCouncil.Core.Services;
+using AzureAiCouncil.Core.Telemetry;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -22,6 +24,9 @@ public sealed class SpeakerAgent : ISpeakerAgent
 
     public async Task<Motion> NormalizeAsync(Motion motion, CancellationToken cancellationToken)
     {
+        using var activity = CouncilTelemetry.ActivitySource.StartActivity("council.speaker.normalize", ActivityKind.Internal);
+        activity?.SetTag(CouncilTelemetry.Tags.MotionId, motion.MotionId);
+
         // Ask the model to normalize the question + constraints, but keep server-generated IDs.
         var prompt = _prompts.RenderFromFile(PromptCatalog.Speaker, new Dictionary<string, string>());
 
