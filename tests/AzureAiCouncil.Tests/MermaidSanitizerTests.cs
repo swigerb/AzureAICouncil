@@ -28,4 +28,32 @@ graph TD;
         Assert.DoesNotContain("graph TD;\n", output);
         Assert.DoesNotContain("end;\n", output);
     }
+
+    [Fact]
+    public void Sanitize_removes_nested_single_quotes_and_dangling_terminal_quote()
+    {
+        var input = """
+graph TD
+  subgraph Net["'VNet with Private Endpoints'"]
+    Firewall["'Azure Firewall'"]
+    NSG["'Network Security Groups'"]
+  end
+  User["'User'"] --> FrontDoor["'Azure Front Door + WAF'"]
+  FrontDoor --> AppService["'Azure App Service (.NET)'"]
+  AppService --> Redis["'Azure Cache for Redis'"]
+  AppService --> SQLDB["'Azure SQL Database / Cosmos DB'"]
+  AppService --> KeyVault["'Azure Key Vault'"]
+  AppService --> ServiceBus["'Azure Service Bus / Event Grid'"]
+  Net --> AppService
+  Monitor["'Azure Monitor + Defender for Cloud'"] --> Governance["'Security & Cost Telemetry'"]"
+""";
+
+        var output = MermaidSanitizer.Sanitize(input);
+
+        Assert.DoesNotContain("\"]\"", output); // no dangling quote after bracket close
+        Assert.Contains("subgraph Net[\"VNet with Private Endpoints\"]", output);
+        Assert.Contains("Governance[\"Security & Cost Telemetry\"]", output);
+        Assert.DoesNotContain("\"'", output); // inner single quotes removed
+        Assert.DoesNotContain("'\"", output);
+    }
 }

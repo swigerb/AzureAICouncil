@@ -18,6 +18,13 @@ internal static partial class MermaidSanitizer
 
         var trimmed = snippet.Trim();
 
+        // Some models wrap the entire snippet in a JSON string literal-looking quote.
+        // If it looks like a fully wrapped snippet, strip the outer quotes.
+        if (LooksLikeWrappedInQuotes(trimmed))
+        {
+            trimmed = trimmed.Substring(1, trimmed.Length - 2).Trim();
+        }
+
         // Handle fenced blocks if present.
         var fenceStart = trimmed.IndexOf("```mermaid", StringComparison.OrdinalIgnoreCase);
         if (fenceStart >= 0)
@@ -56,6 +63,10 @@ internal static partial class MermaidSanitizer
         for (var i = 0; i < lines.Length; i++)
         {
             var line = lines[i].TrimEnd();
+
+            // Drop a dangling trailing quote if the model accidentally appended it.
+            line = TrimDanglingTerminalQuote(line);
+
             if (line.EndsWith(';'))
             {
                 line = line.TrimEnd(';').TrimEnd();
@@ -66,6 +77,18 @@ internal static partial class MermaidSanitizer
             {
                 var id = m.Groups[1].Value;
                 var label = m.Groups["label"].Value.Trim();
+
+                // If the label itself is already wrapped in double-quotes (common model output), strip them.
+                if (label.Length >= 2 && label[0] == '"' && label[^1] == '"')
+                {
+                    label = label.Substring(1, label.Length - 2).Trim();
+                }
+
+                // Many models over-quote labels, producing ["'Label'"] - strip the inner single-quotes.
+                if (label.Length >= 2 && label[0] == '\'' && label[^1] == '\'')
+                {
+                    label = label.Substring(1, label.Length - 2).Trim();
+                }
 
                 // Avoid embedding raw double-quotes inside labels.
                 label = label.Replace('"', '\'');
@@ -81,5 +104,49 @@ internal static partial class MermaidSanitizer
         }
 
         return sb.ToString();
+    }
+
+    private static bool LooksLikeWrappedInQuotes(string value)
+    {
+        if (value.Length < 2)
+        {
+            return false;
+        }
+
+        var first = value[0];
+        var last = value[^1];
+        if ((first != '"' || last != '"') && (first != '\'' || last != '\''))
+        {
+            return false;
+        }
+
+        // Heuristic: must contain a newline or a mermaid directive.
+        return value.Contains('\n') || value.Contains("graph ", StringComparison.OrdinalIgnoreCase) || value.Contains("sequenceDiagram", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string TrimDanglingTerminalQuote(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return line;
+        }
+
+        // If the line ends with a quote and the total number of unescaped quotes is odd,
+        // it's likely a stray quote appended by the model.
+        if (!line.EndsWith('"'))
+        {
+            return line;
+        }
+
+        var quoteCount = 0;
+        for (var i = 0; i < line.Length; i++)
+        {
+            if (line[i] == '"' && (i == 0 || line[i - 1] != '\\'))
+            {
+                quoteCount++;
+            }
+        }
+
+        return (quoteCount % 2 == 1) ? line.TrimEnd('"').TrimEnd() : line;
     }
 }
