@@ -54,10 +54,12 @@ if (npmPath is not null && Directory.Exists(spaWorkingDir))
 {
 	// On Windows, npm is a .cmd shim. Execute it through cmd.exe to avoid CreateProcess issues.
 	var spaExe = OperatingSystem.IsWindows() ? "cmd.exe" : npmExe;
-	var spa = OperatingSystem.IsWindows()
+	var spa = (OperatingSystem.IsWindows()
 		? builder.AddExecutable("spa", spaExe, spaWorkingDir, "/c", "npm", "run", "dev", "--", "--port", "5173")
-		: builder.AddExecutable("spa", spaExe, spaWorkingDir, "run", "dev", "--", "--port", "5173")
-		.WithExternalHttpEndpoints();
+		: builder.AddExecutable("spa", spaExe, spaWorkingDir, "run", "dev", "--", "--port", "5173"))
+		.WithHttpEndpoint(targetPort: 5173, name: "http")
+		.WithExternalHttpEndpoints()
+		.WithUrlForEndpoint("http", url => url.DisplayText = "Open SPA");
 
 	spa.WithEnvironment("BROWSER", "none");
 
