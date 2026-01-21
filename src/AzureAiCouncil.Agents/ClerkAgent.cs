@@ -60,6 +60,13 @@ public sealed class ClerkAgent : IClerkAgent
 
         resolution = resolution with { DeliberationId = deliberationId };
 
+        var mermaid = string.IsNullOrWhiteSpace(resolution.MermaidArchitectureSnippet)
+            ? CreateFallbackMermaidArchitectureSnippet(motion)
+            : resolution.MermaidArchitectureSnippet;
+
+        mermaid = MermaidSanitizer.Sanitize(mermaid);
+        resolution = resolution with { MermaidArchitectureSnippet = mermaid };
+
         _logger.LogInformation("Clerk produced resolution for {DeliberationId}", deliberationId);
         return resolution;
     }
@@ -75,7 +82,7 @@ public sealed class ClerkAgent : IClerkAgent
             _logger.LogWarning(ex, "Invalid JSON from clerk; retrying once");
             var repair = new List<ChatMessage>(messages)
             {
-                new(ChatRole.User, "Your last response was invalid or did not match the schema (missing or malformed required fields). Output ONLY a single valid CouncilResolution JSON object matching the schema, with non-empty deliberationId, summary, and recommendation. No markdown, no prose.")
+                new(ChatRole.User, "Your last response was invalid or did not match the schema (missing or malformed required fields). Output ONLY a single valid CouncilResolution JSON object matching the schema, with non-empty deliberationId, summary, recommendation, and a non-empty mermaidArchitectureSnippet. No markdown, no prose.")
             };
             return await GetJsonTextAsync(repair, options, cancellationToken).ConfigureAwait(false);
         }
@@ -134,7 +141,7 @@ public sealed class ClerkAgent : IClerkAgent
             }
         }
 
-        var required = new[] { "deliberationId", "summary", "recommendation" };
+        var required = new[] { "deliberationId", "summary", "recommendation", "mermaidArchitectureSnippet" };
         var missing = new List<string>();
 
         foreach (var key in required)
@@ -159,6 +166,19 @@ public sealed class ClerkAgent : IClerkAgent
         }
 
         return json;
+    }
+
+    private static string CreateFallbackMermaidArchitectureSnippet(Motion motion)
+    {
+        // Minimal, always-parsable diagram. The clerk prompt should normally supply a richer one,
+        // but we guarantee a diagram exists even if the model omits it.
+        var title = string.IsNullOrWhiteSpace(motion.Question) ? "Proposed System" : motion.Question.Trim();
+        if (title.Length > 80)
+        {
+            title = title.Substring(0, 77) + "...";
+        }
+
+        return $"graph TD\n  User[\"User\"]-->System[\"{title.Replace('"', '\'')}\"]\n  System-->Deps[\"Dependencies\"]\n";
     }
 
     private static bool TryGetPropertyIgnoreCase(JsonElement obj, string name, out JsonElement value)

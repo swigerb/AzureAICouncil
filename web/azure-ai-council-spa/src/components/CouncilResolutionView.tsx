@@ -84,7 +84,7 @@ export function CouncilResolutionView(props: { resolution?: CouncilResolution | 
 
       <div className="section">
         <h3>Mermaid</h3>
-        <pre className="codeBlock">{r.mermaidArchitectureSnippet || '// (none)'}</pre>
+        <pre className="codeBlock">{r.mermaidArchitectureSnippet}</pre>
       </div>
     </div>
   )

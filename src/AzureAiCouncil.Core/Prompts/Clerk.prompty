@@ -10,7 +10,11 @@ Task:
 Rules:
 - Output MUST be valid JSON only.
 - DeliberationId must be populated.
-- If you include Mermaid, it must be a string containing a mermaid code block (```mermaid ... ```), or empty string.
+- Always include a Mermaid architecture diagram in mermaidArchitectureSnippet (never empty).
+- mermaidArchitectureSnippet should be valid Mermaid (prefer graph TD) and use quoted labels: NodeId["Azure App Service (.NET)"]
+- Avoid trailing semicolons.
+- For subgraphs, prefer: subgraph Net["VNet with Private Endpoints"]
+- Place mermaidArchitectureSnippet after suggestedNextSteps in the JSON (best-effort ordering).
 
 CouncilResolution JSON schema:
 {{ResolutionJsonSchema}}
