@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+
 jobs:
   backend-tests:
     name: Backend (.NET) tests
@@ -13,18 +17,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6.1.0
         with:
-          dotnet-version: "10.0.102"
+          global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore AzureAiCouncil.slnx
+        run: dotnet restore AzureAiCouncil.slnx -m:1 /nodeReuse:false
 
       - name: Test
-        run: dotnet test AzureAiCouncil.slnx --configuration Release --no-restore --logger trx --results-directory ./TestResults --collect:"XPlat Code Coverage"
+        run: dotnet test AzureAiCouncil.slnx --configuration Release --no-restore -m:1 /nodeReuse:false --logger trx --results-directory ./TestResults --collect:"XPlat Code Coverage"
 
       - name: Coverage summary (backend)
         if: always()
@@ -59,7 +63,7 @@ jobs:
 
       - name: Upload test results (TRX + coverage)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: backend-testresults
           path: TestResults/**
@@ -74,12 +78,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
-          node-version: "20"
+          node-version: "26.13.0"
           cache: "npm"
           cache-dependency-path: web/azure-ai-council-spa/package-lock.json
 
@@ -130,7 +134,7 @@ jobs:
 
       - name: Upload frontend coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: frontend-coverage
           path: web/azure-ai-council-spa/coverage/**
