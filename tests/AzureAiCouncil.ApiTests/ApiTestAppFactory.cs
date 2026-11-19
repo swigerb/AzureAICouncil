@@ -1,6 +1,10 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using AzureAiCouncil.Agents;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace AzureAiCouncil.ApiTests;
 
@@ -20,6 +24,11 @@ public sealed class ApiTestAppFactory : WebApplicationFactory<Program>
                 ["AzureOpenAI:ApiKey"] = "",
                 ["AzureOpenAI:Deployment"] = "",
             });
+        });
+        builder.ConfigureTestServices(services =>
+        {
+            // Agent registration captures options before the test configuration callback.
+            services.AddSingleton<IOptions<AzureOpenAiOptions>>(Options.Create(new AzureOpenAiOptions()));
         });
     }
 }

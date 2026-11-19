@@ -117,7 +117,7 @@ public sealed class CouncilorAgent : ICouncilorAgent
 
     private async Task<string> GetJsonTextAsync(IReadOnlyList<ChatMessage> messages, ChatOptions options, CancellationToken cancellationToken)
     {
-        var response = await _agent.RunAsync(messages, thread: null, options: new ChatClientAgentRunOptions(options), cancellationToken).ConfigureAwait(false);
+        var response = await _agent.RunAsync(messages, session: null, options: new ChatClientAgentRunOptions(options), cancellationToken).ConfigureAwait(false);
         var text = response.Text;
 
         if (string.IsNullOrWhiteSpace(text))

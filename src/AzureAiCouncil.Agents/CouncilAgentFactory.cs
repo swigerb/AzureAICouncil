@@ -73,9 +73,8 @@ public sealed class CouncilAgentFactory : ICouncilAgentFactory
 
     private ChatClientAgent Create(string name, string description, string instructions, IList<AITool> tools)
     {
-        // Uses the Microsoft Agent Framework OpenAI extensions: ChatClient.CreateAIAgent(...)
         // The clientFactory wraps the underlying IChatClient with function-invocation support so tools can be auto-invoked.
-        return _chatClient.CreateAIAgent(
+        return _chatClient.AsAIAgent(
             instructions: instructions,
             name: name,
             description: description,
